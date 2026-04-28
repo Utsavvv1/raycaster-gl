@@ -1,0 +1,7 @@
+[requires]
+fmt/8.1.1
+glfw/3.3.8
+
+[generators]
+CMakeDeps
+CMakeToolchain
