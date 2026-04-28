@@ -2,11 +2,9 @@
 
 **Classic raycasting engine in modern C++ — CPU-side scene generation, OpenGL for display.**
 
-Use the sections below as copy-paste material for a resume or portfolio site; trim bullets to fit one line each if needed.
-
 ---
 
-## At a glance (resume / CV)
+## At a glance 
 
 - **Graphics:** OpenGL (GLAD), custom GLSL shaders, fullscreen textured quad; nearest-neighbor sampling for crisp software-rendered output.
 - **Engine:** C++20, CMake 3.22+, modular split between core rendering (window, mesh, shaders, raster API) and game code (tile map, camera/player state).
@@ -64,7 +62,7 @@ If your Conan install writes the toolchain beside the source folder instead, pas
 
 ---
 
-## Repository layout (high level)
+## Repository layout 
 
 - `src/core/` — Window, shaders, mesh, software raster surface, timing.
 - `src/game/` — Level grid, player, game loop wiring.
@@ -72,7 +70,7 @@ If your Conan install writes the toolchain beside the source folder instead, pas
 
 ---
 
-## Possible next steps (portfolio evolution)
+## Possible next steps 
 
 - Implement per-column ray casting in the framebuffer and texture-mapped vertical strips.
 - Input: strafe / rotate, collision against the tile grid.
