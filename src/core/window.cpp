@@ -19,7 +19,7 @@ Window::Window(unsigned width, unsigned height, std::string_view title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, 1);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     #ifdef __APPLE__
@@ -33,7 +33,7 @@ Window::Window(unsigned width, unsigned height, std::string_view title) {
         return;
     }
 
-     glfwMakeContextCurrent(window_);
+    glfwMakeContextCurrent(window_);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         return;
     }
@@ -60,6 +60,7 @@ auto Window::Start(const std::function<void(const double delta)> &program) -> vo
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Elapsed time since last frame (variable timestep for movement).
         auto delta = timer_.GetSeconds();
         timer_.Reset();
         program(delta);

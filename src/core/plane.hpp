@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+// Axis-aligned subdivided rectangle in the XY plane (Z = 0); yields indexed triangles + UVs for texturing.
 class Plane {
 public:
     const float width;

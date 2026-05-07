@@ -4,6 +4,8 @@
 
 #include "game/level.hpp"
 
+// First-person mover in world pixel coordinates: (x_, y_) is the top-left of a square hitbox.
+// dir_ is heading in radians (same convention as main.cpp raycaster: cos/sin for forward).
 class Player {
 public:
     explicit Player(const Level& level);

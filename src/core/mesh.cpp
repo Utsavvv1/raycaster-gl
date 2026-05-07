@@ -28,7 +28,7 @@ auto Mesh::Init(
         ConfigureIndices(index_data);
     }
 
-    // clean-up
+    // Unbind VAO then delete buffer names; the VAO retains references until destroyed (standard GL pattern).
     glBindVertexArray(0);
     glDeleteBuffers(1, &vbo_);
     glDeleteBuffers(1, &ebo_);
@@ -57,15 +57,12 @@ auto Mesh::ConfigureVertices(const std::vector<float>& vertex_data) -> void {
         GL_STATIC_DRAW
     );
 
-    // vertices
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(0));
 
-    // normals
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(3));
 
-    // texture coordinates
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(6));
 }

@@ -1,3 +1,6 @@
+// Entry point: software raycasting into a CPU framebuffer (see core/Pixels),
+// then GPU displays that buffer as a textured fullscreen quad.
+
 #include "core/pixels.hpp"
 
 #include <algorithm>
@@ -8,6 +11,7 @@
 #include "game/shared.hpp"
 
 namespace {
+
 constexpr auto kFov = Shared::deg2rad(60.0f);
 
 auto DrawBackground(Pixels& pixels) -> void {
@@ -15,34 +19,47 @@ auto DrawBackground(Pixels& pixels) -> void {
     const auto height = pixels.Height();
     const auto half_height = height / 2;
 
+    // Simple ceiling / floor split (colors are arbitrary).
     pixels.FillRect(0, 0, width, half_height, {.r = 25, .g = 25, .b = 55});
     pixels.FillRect(0, half_height, width, height - half_height, {.r = 40, .g = 30, .b = 20});
 }
 
+// Wolfenstein-style raycasting: one vertical slice per screen column.
+// Camera lives in "map space" (tile units); same grid Level uses for walls.
 auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) -> void {
     const auto screen_width = static_cast<int>(pixels.Width());
     const auto screen_height = static_cast<int>(pixels.Height());
+
+    // Position of the camera in tile coordinates (float — between integer tile indices).
     const auto camera_x = player.CenterX() / static_cast<float>(Level::TILE_SIZE);
     const auto camera_y = player.CenterY() / static_cast<float>(Level::TILE_SIZE);
     const auto dir = player.Direction();
 
+    // Unit direction the player faces (math angle: 0 = +x, increases CCW).
     const auto dir_x = std::cos(dir);
     const auto dir_y = std::sin(dir);
+
+    // Camera plane is perpendicular to dir; length sets horizontal FOV.
+    // tan(half_fov) scales the plane so edge rays match kFov.
     const auto plane_scale = std::tan(kFov * 0.5f);
     const auto plane_x = -dir_y * plane_scale;
     const auto plane_y = dir_x * plane_scale;
 
     for (auto x = 0; x < screen_width; ++x) {
+        // Map column x from [-1, 1] across the screen; interpolate on the camera plane.
         const auto ray_camera = 2.0f * static_cast<float>(x) / static_cast<float>(screen_width) - 1.0f;
         const auto ray_dir_x = dir_x + plane_x * ray_camera;
         const auto ray_dir_y = dir_y + plane_y * ray_camera;
 
+        // Current grid cell for DDA (Digital Differential Analysis).
         auto map_x = static_cast<int>(std::floor(camera_x));
         auto map_y = static_cast<int>(std::floor(camera_y));
 
+        // Distance along the ray for one full step in x or y grid units.
         const auto delta_dist_x = (ray_dir_x == 0.0f) ? 1e30f : std::abs(1.0f / ray_dir_x);
         const auto delta_dist_y = (ray_dir_y == 0.0f) ? 1e30f : std::abs(1.0f / ray_dir_y);
 
+        // Step direction (-1 or +1) and distance to the first vertical / horizontal grid line.
         auto step_x = 0;
         auto step_y = 0;
         auto side_dist_x = 0.0f;
@@ -64,9 +81,10 @@ auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) 
         }
 
         auto hit = false;
-        auto side = 0; // 0 = x-side, 1 = y-side.
+        auto side = 0; // Which grid line we crossed last: 0 = vertical (x-side), 1 = horizontal (y-side).
         constexpr auto kMaxSteps = 128;
         for (auto steps = 0; steps < kMaxSteps; ++steps) {
+            // Advance to the nearest next grid boundary in x or y.
             if (side_dist_x < side_dist_y) {
                 side_dist_x += delta_dist_x;
                 map_x += step_x;
@@ -87,20 +105,25 @@ auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) 
             continue;
         }
 
+        // Euclidean distance along the ray would cause fisheye; use perpendicular distance to the wall plane.
         auto perp_wall_dist = 0.0f;
         if (side == 0) {
-            perp_wall_dist = (static_cast<float>(map_x) - camera_x + (1.0f - static_cast<float>(step_x)) * 0.5f) / ray_dir_x;
+            perp_wall_dist =
+                (static_cast<float>(map_x) - camera_x + (1.0f - static_cast<float>(step_x)) * 0.5f) / ray_dir_x;
         } else {
-            perp_wall_dist = (static_cast<float>(map_y) - camera_y + (1.0f - static_cast<float>(step_y)) * 0.5f) / ray_dir_y;
+            perp_wall_dist =
+                (static_cast<float>(map_y) - camera_y + (1.0f - static_cast<float>(step_y)) * 0.5f) / ray_dir_y;
         }
         if (perp_wall_dist <= 0.0f) {
             continue;
         }
 
+        // Perspective: farther walls occupy fewer rows on screen.
         const auto line_height = static_cast<int>(static_cast<float>(screen_height) / perp_wall_dist);
         const auto draw_start = std::max(0, (screen_height - line_height) / 2);
         const auto draw_end = std::min(screen_height - 1, (screen_height + line_height) / 2);
 
+        // Darken y-side hits slightly so corners read as 3D.
         auto wall_color = RGB {.r = 190, .g = 190, .b = 190};
         if (side == 1) {
             wall_color = RGB {.r = 140, .g = 140, .b = 140};

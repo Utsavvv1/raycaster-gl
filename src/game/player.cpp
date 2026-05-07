@@ -12,6 +12,7 @@ Player::Player(const Level& level) : level_(level) {
 }
 
 namespace {
+
 auto NormalizeAngle(float angle) -> float {
     constexpr auto two_pi = Shared::pi * 2.0f;
     angle = std::fmod(angle, two_pi);
@@ -52,6 +53,7 @@ auto Player::Update(double delta, bool move_forward, bool move_backward, bool tu
     const auto next_x = center_x + std::cos(dir_) * move_step;
     const auto next_y = center_y + std::sin(dir_) * move_step;
 
+    // Axis-aligned slide: try full diagonal move as X then Y so we hug walls instead of sticking.
     const auto can_move = [&](float world_x, float world_y) -> bool {
         const auto left = world_x - collision_radius_;
         const auto right = world_x + collision_radius_;

@@ -7,6 +7,7 @@
 
 #include "core/shader.hpp"
 
+// Wraps a VAO referencing interleaved vertex data: position (3), normal (3), UV (2) — 8 floats per vertex.
 class Mesh {
 public:
     Mesh(

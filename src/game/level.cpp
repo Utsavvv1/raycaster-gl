@@ -34,6 +34,7 @@ auto Level::IsInBounds(int tile_x, int tile_y) const -> bool {
 }
 
 auto Level::IsWallTile(int tile_x, int tile_y) const -> bool {
+    // Treat out-of-map as solid so rays and movement cannot escape the grid.
     if (!IsInBounds(tile_x, tile_y)) {
         return true;
     }

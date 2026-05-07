@@ -25,6 +25,7 @@ Plane::Plane(
     auto segment_w = width / grid_x;
     auto segment_h = height / grid_y;
 
+    // Grid of vertices centered on origin; v increases downward in UV space so texture matches top-left drawing after projection.
     for (auto iy = 0; iy < grid_y1; ++iy) {
         const auto y = iy * segment_h - height_half;
         for (auto ix = 0; ix < grid_x1; ++ix) {
@@ -32,17 +33,18 @@ Plane::Plane(
             const auto u = static_cast<float>(ix) / grid_x;
             const auto v = 1 - (static_cast<float>(iy) / grid_y);
 
-            vertices_.emplace_back(x);  // pos x
-            vertices_.emplace_back(-y); // pos y
-            vertices_.emplace_back(0);  // pos z
-            vertices_.emplace_back(0);  // normal x
-            vertices_.emplace_back(0);  // normal y
-            vertices_.emplace_back(1);  // normal z
-            vertices_.emplace_back(u);  // u
-            vertices_.emplace_back(v);  // v
+            vertices_.emplace_back(x);
+            vertices_.emplace_back(-y);
+            vertices_.emplace_back(0.0f);
+            vertices_.emplace_back(0.0f);
+            vertices_.emplace_back(0.0f);
+            vertices_.emplace_back(1.0f);
+            vertices_.emplace_back(u);
+            vertices_.emplace_back(v);
         }
     }
 
+    // Two triangles per quad (CCW winding when viewed from +Z).
     for (auto iy = 0; iy < grid_y; ++iy) {
         for (auto ix = 0; ix < grid_x; ++ix) {
             const auto a = ix + grid_x1 * iy;

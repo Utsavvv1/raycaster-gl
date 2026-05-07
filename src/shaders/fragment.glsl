@@ -2,6 +2,8 @@
 #pragma debug(on)
 #pragma optimize(off)
 
+// Samples the CPU-filled framebuffer uploaded as a 2D texture (unit 0).
+
 layout (location = 0) out vec4 outFragColor;
 
 in vec2 TexCoords;

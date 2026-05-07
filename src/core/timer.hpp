@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <chrono>
@@ -7,9 +6,10 @@
 
 using Clock = std::chrono::steady_clock;
 
+// Simple frame timer: measures wall-clock intervals between Reset() calls.
 class Timer {
 public:
-    Timer() : start_time_(Clock::now()) {};
+    Timer() : start_time_(Clock::now()) {}
 
     auto GetMilliseconds() const {
         return std::chrono::duration_cast<std::chrono::milliseconds>(

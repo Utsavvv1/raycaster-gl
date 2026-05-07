@@ -19,6 +19,7 @@ struct ShaderInfo {
     std::string_view source;
 };
 
+// Owns a linked GL program built from one vertex + one fragment source string.
 class Shader {
 public:
     explicit Shader(const std::vector<ShaderInfo>& shaders);

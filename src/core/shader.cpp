@@ -33,10 +33,8 @@ auto Shader::GetShaderType(ShaderType type) const -> unsigned int {
     switch(type) {
         case ShaderType::kVertexShader:
             return GL_VERTEX_SHADER;
-            break;
         case ShaderType::kFragmentShader:
             return GL_FRAGMENT_SHADER;
-            break;
         default:
             throw ShaderError("Unsupported Shader Type");
     }
@@ -46,10 +44,8 @@ auto Shader::GetShaderTypeString(ShaderType type) const -> const char* {
     switch (type) {
         case ShaderType::kVertexShader:
             return "Vertex";
-            break;
         case ShaderType::kFragmentShader:
             return "Fragment";
-            break;
         default:
             throw ShaderError {"Unsupported shader type"};
     }

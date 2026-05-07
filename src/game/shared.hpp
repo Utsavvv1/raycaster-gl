@@ -2,8 +2,9 @@
 
 #include <numbers>
 
+// Small math helpers shared by gameplay (angles use radians internally).
 namespace Shared {
-    constexpr float pi = 3.1415927f;
+    constexpr float pi = std::numbers::pi_v<float>;
     constexpr float half_pi = pi / 2.0f;
 
     constexpr auto deg2rad(const float deg) -> float {

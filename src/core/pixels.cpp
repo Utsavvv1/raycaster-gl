@@ -22,10 +22,14 @@ Pixels::Pixels(unsigned width, unsigned height, std::string_view title)
         {ShaderType::kFragmentShader, _SHADER_fragment}
     }} {
 
+    // Single quad in NDC covering [-1,1]; UVs map our texture across the window.
     auto plane = Plane {2, 2, 1, 1};
     screen_ = std::make_unique<Mesh>(plane.vertices(), plane.indices());
 
     InitTexture();
+
+    // Fragment shader samples texture unit 0; bind our texture there before draw (Bind()).
+    shader_.SetUniform("Texture0", 0);
 }
 
 auto Pixels::Run() -> void {
@@ -44,8 +48,19 @@ auto Pixels::IsKeyDown(int key) const -> bool {
     return window_.IsKeyDown(key);
 }
 
+auto Pixels::ResetStroke() -> void {
+    stroke_color_ = {255, 255, 255};
+    no_stroke_ = false;
+}
+
+auto Pixels::ResetFill() -> void {
+    fill_color_ = {255, 255, 255};
+    no_fill_ = false;
+}
+
 auto Pixels::InitTexture() -> void {
     glGenTextures(1, &texture_);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, width_, height_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE, data_.data());
@@ -66,7 +81,8 @@ auto Pixels::SetFill(RGB color) -> void {
 auto Pixels::PutPixel(unsigned x, unsigned y, RGB color) -> void {
     if (x >= width_ || y >= height_) return;
 
-    y = height_ - y - 1; // flip the y coordinate
+    // Match GL texture memory: row 0 is bottom; API uses top-left for y.
+    y = height_ - y - 1;
 
     auto index = (y * width_ + x) * RGB_SIZE;
     data_[index] = color.r;
@@ -79,13 +95,12 @@ auto Pixels::Line(unsigned x1, unsigned y1, unsigned x2, unsigned y2) -> void {
 
     auto delta_x = static_cast<int>(x2 - x1);
     auto delta_y = static_cast<int>(y2 - y1);
-    auto sign_x = delta_x < 0 ? -1 : 1;
-    auto sign_y = delta_y < 0 ? -1 : 1;
     auto steep = std::abs(delta_y) >= std::abs(delta_x);
     auto slope = steep ?
         static_cast<float>(delta_x) / static_cast<float>(delta_y) :
         static_cast<float>(delta_y) / static_cast<float>(delta_x);
 
+    // Walk along the dominant axis (Bresenham-style stepping without integer bias).
     if (steep) {
         for (auto i = 0; i < delta_y; ++i) {
             auto px = slope * i + x1;
@@ -125,7 +140,8 @@ auto Pixels::Rect(unsigned x, unsigned y, unsigned width, unsigned height) -> vo
 
     if (no_fill_) return;
 
-    y = height_ - y - height; // flip the y coordinate
+    // Interior fill writes raw buffer rows (same flip as PutPixel) for speed.
+    y = height_ - y - height;
 
     for (unsigned py = y + 1; py < y + height - 1; ++py) {
         auto index = (py * width_ + x + 1) * RGB_SIZE;
@@ -178,6 +194,8 @@ auto Pixels::Clear() -> void {
 }
 
 auto Pixels::Bind() -> void {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE, data_.data());
 }
 
