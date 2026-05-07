@@ -123,8 +123,3 @@ If Conan writes the toolchain elsewhere, pass the path it prints after `conan in
 - Sprites / billboards in the same framebuffer.
 - Strafe keys, mouse look, map loading from files.
 
----
-
-## License
-
-Add a `LICENSE` file in this repo if you publish it; ensure compliance with any third-party code (e.g. GLAD, dependency licenses).
