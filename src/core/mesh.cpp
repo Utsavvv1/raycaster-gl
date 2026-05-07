@@ -1,5 +1,4 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
+// mesh.cpp — Mesh VAO/VBO setup (see mesh.hpp).
 
 #include "mesh.hpp"
 
@@ -28,7 +27,6 @@ auto Mesh::Init(
         ConfigureIndices(index_data);
     }
 
-    // Unbind VAO then delete buffer names; the VAO retains references until destroyed (standard GL pattern).
     glBindVertexArray(0);
     glDeleteBuffers(1, &vbo_);
     glDeleteBuffers(1, &ebo_);
@@ -57,12 +55,15 @@ auto Mesh::ConfigureVertices(const std::vector<float>& vertex_data) -> void {
         GL_STATIC_DRAW
     );
 
+    // Location 0 — vec3 position.
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(0));
 
+    // Location 1 — vec3 normal (fragment shader ignores for now).
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(3));
 
+    // Location 2 — vec2 UV → sampled in fragment shader as Texture0.
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, STRIDE(8), BUFFER_OFFSET(6));
 }

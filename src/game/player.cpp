@@ -1,3 +1,5 @@
+// player.cpp — implements Player (see player.hpp for coordinate + collision overview).
+
 #include "player.hpp"
 
 #include <algorithm>
@@ -5,6 +7,7 @@
 
 #include "game/shared.hpp"
 
+// Spawn in the map center, facing “up” on screen (90° from +X in standard math = toward +Y world).
 Player::Player(const Level& level) : level_(level) {
     x_ = static_cast<float>((level_.Width() - Player::size_) >> 1);
     y_ = static_cast<float>((level_.Height() - Player::size_) >> 1);
@@ -13,6 +16,7 @@ Player::Player(const Level& level) : level_(level) {
 
 namespace {
 
+// Keep heading in [0, 2π) so turning forever doesn’t drift float error into huge angles.
 auto NormalizeAngle(float angle) -> float {
     constexpr auto two_pi = Shared::pi * 2.0f;
     angle = std::fmod(angle, two_pi);
@@ -25,6 +29,7 @@ auto NormalizeAngle(float angle) -> float {
 } // namespace
 
 auto Player::Update(double delta, bool move_forward, bool move_backward, bool turn_left, bool turn_right) -> void {
+    // --- Rotation (radians / second scaled by input -1, 0, or +1) ---
     auto turn_axis = 0.0f;
     if (turn_left) {
         turn_axis -= 1.0f;
@@ -34,6 +39,7 @@ auto Player::Update(double delta, bool move_forward, bool move_backward, bool tu
     }
     dir_ = NormalizeAngle(dir_ + turn_axis * rotate_speed_ * static_cast<float>(delta));
 
+    // --- Translation: intent along look vector (may slide along walls; see below) ---
     auto move_axis = 0.0f;
     if (move_forward) {
         move_axis += 1.0f;
@@ -53,7 +59,8 @@ auto Player::Update(double delta, bool move_forward, bool move_backward, bool tu
     const auto next_x = center_x + std::cos(dir_) * move_step;
     const auto next_y = center_y + std::sin(dir_) * move_step;
 
-    // Axis-aligned slide: try full diagonal move as X then Y so we hug walls instead of sticking.
+    // Collision = axis-aligned bounding box (AABB) vs tile walls: four corner probes.
+    // Not a swept capsule — fast and good enough for grid worlds.
     const auto can_move = [&](float world_x, float world_y) -> bool {
         const auto left = world_x - collision_radius_;
         const auto right = world_x + collision_radius_;
@@ -66,6 +73,7 @@ auto Player::Update(double delta, bool move_forward, bool move_backward, bool tu
             && !level_.IsWallAtWorld(right, bottom);
     };
 
+    // Try X motion alone, then Y alone → diagonal moves slide along corridors instead of stopping dead.
     if (can_move(next_x, center_y)) {
         center_x = next_x;
     }
@@ -82,6 +90,7 @@ auto Player::DrawMinimap(Pixels& pixels) const -> void {
     DrawMinimap(pixels, Level::TILE_SIZE, 0, 0);
 }
 
+// Scale world position to minimap pixels: tile_size/TILE_SIZE is the zoom factor.
 auto Player::DrawMinimap(Pixels& pixels, unsigned tile_size, unsigned offset_x, unsigned offset_y) const -> void {
     const auto scale = static_cast<float>(tile_size) / static_cast<float>(Level::TILE_SIZE);
     const auto marker_size = std::max(2u, static_cast<unsigned>(std::round(size_ * scale)));

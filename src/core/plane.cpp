@@ -1,5 +1,4 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
+// plane.cpp — geometric generator for Plane (see plane.hpp).
 
 #include "plane.hpp"
 
@@ -25,7 +24,7 @@ Plane::Plane(
     auto segment_w = width / grid_x;
     auto segment_h = height / grid_y;
 
-    // Grid of vertices centered on origin; v increases downward in UV space so texture matches top-left drawing after projection.
+    // iy loops “screen downward” in UV space so v=0 sits at the geometric top after negating y below.
     for (auto iy = 0; iy < grid_y1; ++iy) {
         const auto y = iy * segment_h - height_half;
         for (auto ix = 0; ix < grid_x1; ++ix) {
@@ -44,7 +43,7 @@ Plane::Plane(
         }
     }
 
-    // Two triangles per quad (CCW winding when viewed from +Z).
+    // Quad indices: two triangles per cell — (a,b,d) and (b,c,d) with CCW winding from +Z.
     for (auto iy = 0; iy < grid_y; ++iy) {
         for (auto ix = 0; ix < grid_x; ++ix) {
             const auto a = ix + grid_x1 * iy;

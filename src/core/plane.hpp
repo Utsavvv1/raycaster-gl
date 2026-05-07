@@ -1,12 +1,18 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #pragma once
 
 #include <memory>
 #include <vector>
 
-// Axis-aligned subdivided rectangle in the XY plane (Z = 0); yields indexed triangles + UVs for texturing.
+// =============================================================================
+// Plane — parametric grid in XY (used here as a textured quad for Pixels)
+// =============================================================================
+//
+// Builds a width×height rectangle centered at origin in the z=0 plane, subdivided into
+// width_segments × height_segments cells. Each cell → two triangles (CCW from +Z).
+//
+// Outputs match Mesh’s interleaved layout (8 floats / vertex). UVs map [0,1] across the quad;
+// v is flipped so CPU top-left bitmap maps intuitively when sampled in GL.
+//
 class Plane {
 public:
     const float width;

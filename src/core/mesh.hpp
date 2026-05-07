@@ -1,13 +1,21 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #pragma once
 
 #include <vector>
 
 #include "core/shader.hpp"
 
-// Wraps a VAO referencing interleaved vertex data: position (3), normal (3), UV (2) — 8 floats per vertex.
+// =============================================================================
+// Mesh — VAO + optional indexed draw for static geometry
+// =============================================================================
+//
+// Vertex layout (interleaved float array, VERTEX_ELEMENTS = 8 per vertex):
+//   [0..2] position xyz
+//   [3..5] normal   xyz   (unused by current shaders but matches attrib layout)
+//   [6..7] uv       st
+//
+// Init binds a VAO, uploads VBO (+ optional EBO), records attrib pointers on the VAO, then
+// deletes the VBO/EBO *names* — the drivers keep storage alive because the VAO references them.
+//
 class Mesh {
 public:
     Mesh(

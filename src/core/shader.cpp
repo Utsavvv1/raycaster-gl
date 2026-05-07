@@ -1,5 +1,4 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
+// shader.cpp — GL shader compilation wrapper (see shader.hpp).
 
 #include "shader.hpp"
 
@@ -18,6 +17,7 @@ Shader::Shader(const std::vector<ShaderInfo>& shaders) {
         glCompileShader(shader_id);
         CheckShaderCompileStatus(shader_id, shader_info.type);
         glAttachShader(program_, shader_id);
+        // Detach happens implicitly when shader object deleted after successful attach.
         glDeleteShader(shader_id);
     }
 

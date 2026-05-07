@@ -2,7 +2,10 @@
 #pragma debug(on)
 #pragma optimize(off)
 
-// Samples the CPU-filled framebuffer uploaded as a 2D texture (unit 0).
+// Fragment stage: each fullscreen pixel samples one texel of the CPU framebuffer.
+//
+// Pixels::Bind uploads RGB8 data to GL_TEXTURE_2D on unit 0; Pixels ctor sets uniform "Texture0" to 0.
+// GL_NEAREST filtering keeps crisp square pixels (retro look).
 
 layout (location = 0) out vec4 outFragColor;
 

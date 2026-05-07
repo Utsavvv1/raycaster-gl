@@ -6,7 +6,16 @@
 
 using Clock = std::chrono::steady_clock;
 
-// Simple frame timer: measures wall-clock intervals between Reset() calls.
+// =============================================================================
+// Timer — minimal stopwatch for frame deltas
+// =============================================================================
+//
+// Usage pattern (see Window::Start):
+//   Reset() once before the loop;
+//   each iteration: dt = GetSeconds(); Reset(); → dt is elapsed wall time since last Reset.
+//
+// steady_clock = monotonic (not affected by system clock adjustments); good for animation dt.
+//
 class Timer {
 public:
     Timer() : start_time_(Clock::now()) {}

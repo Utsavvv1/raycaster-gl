@@ -4,8 +4,23 @@
 
 #include "game/level.hpp"
 
-// First-person mover in world pixel coordinates: (x_, y_) is the top-left of a square hitbox.
-// dir_ is heading in radians (same convention as main.cpp raycaster: cos/sin for forward).
+// =============================================================================
+// Player — first-person agent in “world pixel” space
+// =============================================================================
+//
+// State:
+//   (x_, y_)     — top-left corner of a size_×size_ square hitbox in world pixels.
+//   dir_         — heading in radians; forward = (cos(dir_), sin(dir_)), same as main’s ray dir.
+//
+// Why world pixels:
+//   Level::TILE_SIZE converts between grid and world; raycaster and minimap both use the same space.
+//
+// Movement model (see player.cpp):
+//   • Turn: add to dir_, wrap to [0, 2π).
+//   • Move: try to step the *center* along the look vector; if blocked, try X-only then Y-only
+//     (axis slide) so the player can scrape along walls.
+//   • Collision: four corner samples of a small box (collision_radius_) — not a full sweep test.
+//
 class Player {
 public:
     explicit Player(const Level& level);

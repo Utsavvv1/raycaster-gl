@@ -1,6 +1,3 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #pragma once
 
 #include <functional>
@@ -23,8 +20,24 @@ struct RGB {
 using DrawCallback = std::function<void()>;
 using UpdateCallback = std::function<void(const double delta)>;
 
-// CPU-side RGB framebuffer + minimal 2D drawing API. Each frame the buffer is uploaded to a GL texture
-// and drawn with a fullscreen triangle mesh (see Run).
+// =============================================================================
+// Pixels — software rasterizer + GL texture presentation
+// =============================================================================
+//
+// Mental model:
+//   • `data_` holds RGB triples in row-major order matching OpenGL’s texture memory:
+//       bottom row first, left-to-right within a row (PutPixel flips from “screen y down”).
+//   • Drawing primitives write into `data_` only (CPU).
+//   • Each frame, Bind() uploads `data_` to `texture_`; the Mesh draws a fullscreen quad
+//     so the fragment shader can sample that texture (nearest filtering = crisp pixels).
+//
+// Callback wiring:
+//   • Update(delta): game logic / input (called before Draw each frame).
+//   • Draw(): render the whole scene into the buffer (main raycaster + HUD lives here).
+//
+// Stroke/fill behave like a tiny subset of Processing/p5: Rect outlines use stroke;
+// interior uses fill unless NoFill; NoStroke skips outline pixels.
+//
 class Pixels {
 public:
     Pixels(unsigned width, unsigned height, std::string_view title);
@@ -58,7 +71,6 @@ public:
 
     auto Clear() -> void;
 
-    // Uploads CPU buffer to the GL texture (call before drawing the screen quad).
     auto Bind() -> void;
     auto Width() const { return width_; }
     auto Height() const { return height_; }
@@ -86,6 +98,5 @@ private:
 
     auto InitTexture() -> void;
 
-    // Writes one pixel; public drawing helpers use top-left origin (y down). PutPixel converts to GL row order.
     auto PutPixel(unsigned x, unsigned y, RGB color) -> void;
 };

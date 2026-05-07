@@ -1,5 +1,4 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
+// pixels.cpp — implements Pixels (see pixels.hpp for pipeline overview).
 
 #include "pixels.hpp"
 
@@ -22,13 +21,13 @@ Pixels::Pixels(unsigned width, unsigned height, std::string_view title)
         {ShaderType::kFragmentShader, _SHADER_fragment}
     }} {
 
-    // Single quad in NDC covering [-1,1]; UVs map our texture across the window.
+    // Two triangles covering clip space [-1,1]×[-1,1]; UVs stretch our CPU bitmap across the window.
     auto plane = Plane {2, 2, 1, 1};
     screen_ = std::make_unique<Mesh>(plane.vertices(), plane.indices());
 
     InitTexture();
 
-    // Fragment shader samples texture unit 0; bind our texture there before draw (Bind()).
+    // Fragment shader has `uniform sampler2D Texture0`; integer sets which multitexture unit to sample.
     shader_.SetUniform("Texture0", 0);
 }
 
@@ -81,7 +80,7 @@ auto Pixels::SetFill(RGB color) -> void {
 auto Pixels::PutPixel(unsigned x, unsigned y, RGB color) -> void {
     if (x >= width_ || y >= height_) return;
 
-    // Match GL texture memory: row 0 is bottom; API uses top-left for y.
+    // Texture storage is bottom-up; our drawing API is top-down — flip Y once here.
     y = height_ - y - 1;
 
     auto index = (y * width_ + x) * RGB_SIZE;
@@ -100,7 +99,7 @@ auto Pixels::Line(unsigned x1, unsigned y1, unsigned x2, unsigned y2) -> void {
         static_cast<float>(delta_x) / static_cast<float>(delta_y) :
         static_cast<float>(delta_y) / static_cast<float>(delta_x);
 
-    // Walk along the dominant axis (Bresenham-style stepping without integer bias).
+    // Increment along the long axis; sparse coverage for very short lines (good enough for HUD).
     if (steep) {
         for (auto i = 0; i < delta_y; ++i) {
             auto px = slope * i + x1;
@@ -128,6 +127,7 @@ auto Pixels::Rect(unsigned x, unsigned y, unsigned width, unsigned height) -> vo
     if (x + width >= width_) width = width_ - x;
     if (y + height >= height_) height = height_ - y;
 
+    // Outline uses stroke unless stroke disabled (then edge uses fill if stroke off — see color pick below).
     const auto color = no_stroke_ ? fill_color_ : stroke_color_;
     for (unsigned i = 0; i < width; ++i) {
         PutPixel(x + i, y, color);
@@ -140,7 +140,7 @@ auto Pixels::Rect(unsigned x, unsigned y, unsigned width, unsigned height) -> vo
 
     if (no_fill_) return;
 
-    // Interior fill writes raw buffer rows (same flip as PutPixel) for speed.
+    // Fill: bypass PutPixel row-by-row and memcpy-style fill inner rows (already bottom-up indices).
     y = height_ - y - height;
 
     for (unsigned py = y + 1; py < y + height - 1; ++py) {

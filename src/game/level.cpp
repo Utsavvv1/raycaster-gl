@@ -1,11 +1,15 @@
+// level.cpp — Level queries + minimap rendering (grid stored in level.hpp).
+
 #include "level.hpp"
 
 #include <cmath>
 
+// Default minimap: one screen pixel per TILE_SIZE map pixel (huge); prefer the overload below.
 auto Level::DrawMinimap(Pixels& pixels) const -> void {
     DrawMinimap(pixels, TILE_SIZE, 0, 0);
 }
 
+// Nested loops visit every cell once; Rect draws outline + optional fill for HUD tiles.
 auto Level::DrawMinimap(Pixels& pixels, unsigned tile_size, unsigned offset_x, unsigned offset_y) const -> void {
     if (tile_size == 0) {
         return;
@@ -34,7 +38,7 @@ auto Level::IsInBounds(int tile_x, int tile_y) const -> bool {
 }
 
 auto Level::IsWallTile(int tile_x, int tile_y) const -> bool {
-    // Treat out-of-map as solid so rays and movement cannot escape the grid.
+    // Anything outside the grid is treated as wall so rays stop and the player can’t exit.
     if (!IsInBounds(tile_x, tile_y)) {
         return true;
     }
@@ -43,6 +47,7 @@ auto Level::IsWallTile(int tile_x, int tile_y) const -> bool {
 }
 
 auto Level::IsWallAtWorld(float world_x, float world_y) const -> bool {
+    // Snap world coords to tile indices: same conversion raycasting uses implicitly.
     const auto tile_x = static_cast<int>(std::floor(world_x / static_cast<float>(TILE_SIZE)));
     const auto tile_y = static_cast<int>(std::floor(world_y / static_cast<float>(TILE_SIZE)));
 

@@ -1,6 +1,3 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #pragma once
 
 #include <stdexcept>
@@ -19,7 +16,16 @@ struct ShaderInfo {
     std::string_view source;
 };
 
-// Owns a linked GL program built from one vertex + one fragment source string.
+// =============================================================================
+// Shader — compile/link OpenGL program from GLSL source strings
+// =============================================================================
+//
+// Constructor pipeline:
+//   glCreateProgram → for each stage: compile, attach → glLinkProgram.
+// Compile/link failures throw ShaderError with driver log text on stderr.
+//
+// Uniform helpers call Use() internally because uniform locations are program-relative.
+//
 class Shader {
 public:
     explicit Shader(const std::vector<ShaderInfo>& shaders);
