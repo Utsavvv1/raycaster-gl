@@ -1,6 +1,3 @@
-# Copyright 2024 Betamark Pty Ltd. All rights reserved.
-# Author: Shlomi Nissan (shlomi@betamark.com)
-#
 # ShaderString.cmake
 # This function looks for GLSL files and converts them into C-style strings
 
@@ -16,7 +13,7 @@ foreach(SHADER IN LISTS SHADERS)
     string(REGEX REPLACE "\\.[^.]*$" "" FILENAME_NO_EXT ${FILENAME})
     set(HEADER_FILE ${DIRECTORY}/headers/${FILENAME_NO_EXT}.h)
 
-    message("🎨 Writing shader ${FILENAME_NO_EXT}.h")
+    message("Writing shader ${FILENAME_NO_EXT}.h")
 
     file(READ ${SHADER} CONTENTS)
     file(WRITE ${HEADER_FILE} "#pragma once\n\nstatic const char* _SHADER_${FILENAME_NO_EXT} = R\"(")

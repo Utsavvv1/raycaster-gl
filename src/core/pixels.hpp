@@ -34,6 +34,7 @@ public:
     auto Update(const UpdateCallback& c) { update_ = c; }
 
     auto Run() -> void;
+    auto IsKeyDown(int key) const -> bool;
 
     auto ResetStroke() -> void;
 
@@ -50,10 +51,14 @@ public:
     auto Line(unsigned x1, unsigned y1, unsigned x2, unsigned y2) -> void;
 
     auto Rect(unsigned x, unsigned y, unsigned width, unsigned height) -> void;
+    auto VLine(int x, int y1, int y2, RGB color) -> void;
+    auto FillRect(unsigned x, unsigned y, unsigned width, unsigned height, RGB color) -> void;
 
     auto Clear() -> void;
 
     auto Bind() -> void;
+    auto Width() const { return width_; }
+    auto Height() const { return height_; }
 
 private:
     bool no_stroke_ {false};

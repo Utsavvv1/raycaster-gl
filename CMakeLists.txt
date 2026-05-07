@@ -1,6 +1,3 @@
-# Copyright 2024 Betamark Pty Ltd. All rights reserved.
-# Author: Shlomi Nissan (shlomi@betamark.com)
-
 cmake_minimum_required(VERSION 3.22.1)
 
 project(raycaster-gl)

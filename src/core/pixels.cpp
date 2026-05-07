@@ -40,6 +40,10 @@ auto Pixels::Run() -> void {
     });
 }
 
+auto Pixels::IsKeyDown(int key) const -> bool {
+    return window_.IsKeyDown(key);
+}
+
 auto Pixels::InitTexture() -> void {
     glGenTextures(1, &texture_);
     glBindTexture(GL_TEXTURE_2D, texture_);
@@ -130,6 +134,41 @@ auto Pixels::Rect(unsigned x, unsigned y, unsigned width, unsigned height) -> vo
             data_[px] = fill_color_.r;
             data_[px + 1] = fill_color_.g;
             data_[px + 2] = fill_color_.b;
+        }
+    }
+}
+
+auto Pixels::VLine(int x, int y1, int y2, RGB color) -> void {
+    if (x < 0 || x >= static_cast<int>(width_)) {
+        return;
+    }
+
+    if (y1 > y2) {
+        std::swap(y1, y2);
+    }
+
+    const auto min_y = std::max(y1, 0);
+    const auto max_y = std::min(y2, static_cast<int>(height_) - 1);
+    for (auto y = min_y; y <= max_y; ++y) {
+        PutPixel(static_cast<unsigned>(x), static_cast<unsigned>(y), color);
+    }
+}
+
+auto Pixels::FillRect(unsigned x, unsigned y, unsigned width, unsigned height, RGB color) -> void {
+    if (x >= width_ || y >= height_) {
+        return;
+    }
+
+    if (x + width > width_) {
+        width = width_ - x;
+    }
+    if (y + height > height_) {
+        height = height_ - y;
+    }
+
+    for (unsigned py = y; py < y + height; ++py) {
+        for (unsigned px = x; px < x + width; ++px) {
+            PutPixel(px, py, color);
         }
     }
 }

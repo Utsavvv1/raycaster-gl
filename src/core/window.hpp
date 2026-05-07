@@ -1,6 +1,3 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #pragma once
 
 #include <functional>
@@ -18,6 +15,7 @@ public:
     Window(unsigned width, unsigned height, std::string_view title);
 
     auto Start(const std::function<void(const double delta)>& program) -> void;
+    auto IsKeyDown(int key) const -> bool;
 
     ~Window();
 

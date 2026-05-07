@@ -1,8 +1,6 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #include "player.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "game/shared.hpp"
@@ -13,17 +11,93 @@ Player::Player(const Level& level) : level_(level) {
     dir_ = Shared::deg2rad(90.0f);
 }
 
+namespace {
+auto NormalizeAngle(float angle) -> float {
+    constexpr auto two_pi = Shared::pi * 2.0f;
+    angle = std::fmod(angle, two_pi);
+    if (angle < 0.0f) {
+        angle += two_pi;
+    }
+
+    return angle;
+}
+} // namespace
+
+auto Player::Update(double delta, bool move_forward, bool move_backward, bool turn_left, bool turn_right) -> void {
+    auto turn_axis = 0.0f;
+    if (turn_left) {
+        turn_axis -= 1.0f;
+    }
+    if (turn_right) {
+        turn_axis += 1.0f;
+    }
+    dir_ = NormalizeAngle(dir_ + turn_axis * rotate_speed_ * static_cast<float>(delta));
+
+    auto move_axis = 0.0f;
+    if (move_forward) {
+        move_axis += 1.0f;
+    }
+    if (move_backward) {
+        move_axis -= 1.0f;
+    }
+
+    if (move_axis == 0.0f) {
+        return;
+    }
+
+    auto center_x = CenterX();
+    auto center_y = CenterY();
+
+    const auto move_step = move_axis * move_speed_ * static_cast<float>(delta);
+    const auto next_x = center_x + std::cos(dir_) * move_step;
+    const auto next_y = center_y + std::sin(dir_) * move_step;
+
+    const auto can_move = [&](float world_x, float world_y) -> bool {
+        const auto left = world_x - collision_radius_;
+        const auto right = world_x + collision_radius_;
+        const auto top = world_y - collision_radius_;
+        const auto bottom = world_y + collision_radius_;
+
+        return !level_.IsWallAtWorld(left, top)
+            && !level_.IsWallAtWorld(right, top)
+            && !level_.IsWallAtWorld(left, bottom)
+            && !level_.IsWallAtWorld(right, bottom);
+    };
+
+    if (can_move(next_x, center_y)) {
+        center_x = next_x;
+    }
+    if (can_move(center_x, next_y)) {
+        center_y = next_y;
+    }
+
+    constexpr auto half_size = static_cast<float>(size_) * 0.5f;
+    x_ = center_x - half_size;
+    y_ = center_y - half_size;
+}
+
 auto Player::DrawMinimap(Pixels& pixels) const -> void {
+    DrawMinimap(pixels, Level::TILE_SIZE, 0, 0);
+}
+
+auto Player::DrawMinimap(Pixels& pixels, unsigned tile_size, unsigned offset_x, unsigned offset_y) const -> void {
+    const auto scale = static_cast<float>(tile_size) / static_cast<float>(Level::TILE_SIZE);
+    const auto marker_size = std::max(2u, static_cast<unsigned>(std::round(size_ * scale)));
+    const auto px = static_cast<unsigned>(offset_x + x_ * scale);
+    const auto py = static_cast<unsigned>(offset_y + y_ * scale);
+
     pixels.SetFill({.r = 255, .g = 0, .b = 0});
     pixels.NoStroke();
-    pixels.Rect(x_, y_, Player::size_, Player::size_);
+    pixels.Rect(px, py, marker_size, marker_size);
 
     pixels.SetStroke({.r = 0, .g = 0, .b = 255});
 
-    const auto offset = Player::size_ / 2;
+    const auto offset = static_cast<float>(marker_size) * 0.5f;
+    const auto ray_len = std::max(10.0f, 50.0f * scale);
     pixels.Line(
-        x_ + offset, y_ + offset,
-        x_ + offset + std::cos(dir_) * 50,
-        y_ + offset + std::sin(dir_) * 50
+        static_cast<unsigned>(px + offset),
+        static_cast<unsigned>(py + offset),
+        static_cast<unsigned>(px + offset + std::cos(dir_) * ray_len),
+        static_cast<unsigned>(py + offset + std::sin(dir_) * ray_len)
     );
 }

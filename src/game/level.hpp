@@ -1,5 +1,3 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
 
 #pragma once
 
@@ -20,6 +18,10 @@ public:
     auto Height() const { return Rows() * Level::TILE_SIZE; }
 
     auto DrawMinimap(Pixels& pixels) const -> void;
+    auto DrawMinimap(Pixels& pixels, unsigned tile_size, unsigned offset_x, unsigned offset_y) const -> void;
+    auto IsInBounds(int tile_x, int tile_y) const -> bool;
+    auto IsWallTile(int tile_x, int tile_y) const -> bool;
+    auto IsWallAtWorld(float world_x, float world_y) const -> bool;
 
 private:
     std::vector<std::vector<int>> data_ {

@@ -1,6 +1,3 @@
-// Copyright 2024 Betamark Pty Ltd. All rights reserved.
-// Author: Shlomi Nissan (shlomi@betamark.com)
-
 #include "window.hpp"
 
 #include <GLFW/glfw3.h>
@@ -53,6 +50,10 @@ Window::Window(unsigned width, unsigned height, std::string_view title) {
 }
 
 auto Window::Start(const std::function<void(const double delta)> &program) -> void {
+    if (window_ == nullptr) {
+        return;
+    }
+
     timer_.Reset();
 
     while(!glfwWindowShouldClose(window_)) {
@@ -66,6 +67,14 @@ auto Window::Start(const std::function<void(const double delta)> &program) -> vo
         glfwSwapBuffers(window_);
         glfwPollEvents();
     }
+}
+
+auto Window::IsKeyDown(int key) const -> bool {
+    if (window_ == nullptr) {
+        return false;
+    }
+
+    return glfwGetKey(window_, key) == GLFW_PRESS;
 }
 
 Window::~Window() {
