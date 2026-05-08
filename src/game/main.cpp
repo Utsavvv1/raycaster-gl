@@ -28,8 +28,11 @@
 #include "game/player.hpp"
 #include "game/shared.hpp"
 
+// TL;DR: Update() = keys→player; Draw() = sky/floor + raycast columns + minimap; Run() uploads buffer & swaps frames.
+
 namespace {
 
+// How wide the view feels horizontally (radians). Bigger = see more wall at once at the edges.
 constexpr auto kFov = Shared::deg2rad(60.0f);
 
 // -----------------------------------------------------------------------------
@@ -40,8 +43,9 @@ auto DrawBackground(Pixels& pixels) -> void {
     const auto height = pixels.Height();
     const auto half_height = height / 2;
 
-    pixels.FillRect(0, 0, width, half_height, {.r = 25, .g = 25, .b = 55});
-    pixels.FillRect(0, half_height, width, height - half_height, {.r = 40, .g = 30, .b = 20});
+    // Cheap filler — walls get drawn on top of this in DrawRaycastScene.
+    pixels.FillRect(0, 0, width, half_height, {.r = 25, .g = 25, .b = 55}); // top half ≈ “sky”
+    pixels.FillRect(0, half_height, width, height - half_height, {.r = 40, .g = 30, .b = 20}); // bottom ≈ “floor”
 }
 
 // -----------------------------------------------------------------------------
@@ -71,68 +75,76 @@ auto DrawBackground(Pixels& pixels) -> void {
 //   E) SHADE — same wall gets two tones: NS walls vs EW walls (side 0 vs 1).
 
 auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) -> void {
+    // Same WxH as the Pixels buffer / texture — one ray per pixel column here.
     const auto screen_width = static_cast<int>(pixels.Width());
     const auto screen_height = static_cast<int>(pixels.Height());
 
-    // Camera position in tile units (fractional OK — we’re between cell centers).
+    // Player lives in pixels elsewhere; here we want “which tile am I in?” math → divide by tile size.
+    // Camera in tile space — fractions OK (say 5.2, 8.7 = inside cell column 5, row 8).
     const auto camera_x = player.CenterX() / static_cast<float>(Level::TILE_SIZE);
     const auto camera_y = player.CenterY() / static_cast<float>(Level::TILE_SIZE);
     const auto dir = player.Direction();
 
-    // Facing vector on the map plane (standard math: angle 0 → +X, increasing CCW).
+    // Facing on the map (angle 0 → +X, CCW) — basically the unit “where we look” vector.
     const auto dir_x = std::cos(dir);
     const auto dir_y = std::sin(dir);
 
-    // The “plane” vector is 90° rotated from dir and scaled so atan combines with dir to kFov.
+    // Camera “plane”: 90° to dir, length tan(half-FOV). dir ± plane sweeps the whole horizontal view.
     const auto plane_scale = std::tan(kFov * 0.5f);
-    const auto plane_x = -dir_y * plane_scale;
+    const auto plane_x = -dir_y * plane_scale; // to the “left” of facing on the map
     const auto plane_y = dir_x * plane_scale;
 
+    // OUTER: sweep left→right. INNER (below): shoot one ray, draw one vertical wall slab for this x.
     for (auto x = 0; x < screen_width; ++x) {
-        // Map screen column to [-1,1]; left edge = -1, right edge = +1.
+        // Which slice of the view this column is: left edge of screen ≈ -1, right ≈ +1, middle ≈ 0.
         const auto ray_camera = 2.0f * static_cast<float>(x) / static_cast<float>(screen_width) - 1.0f;
+        // One cast direction per column = forward + sideways; doesn’t have to be unit length for DDA.
         const auto ray_dir_x = dir_x + plane_x * ray_camera;
         const auto ray_dir_y = dir_y + plane_y * ray_camera;
 
-        // Integer cell containing the camera (floor = southwest corner of cell).
+        // Grid tile under our feet (floor = tile index).
         auto map_x = static_cast<int>(std::floor(camera_x));
         auto map_y = static_cast<int>(std::floor(camera_y));
 
-        // How far along the ray (in ray space) to move for each grid step on X / Y.
+        // delta = ray-length to hop exactly one grid line on that axis (think “price per grout line”).
+        // 1e30 = “never pick me first” when the ray is parallel to that axis (no divide-by-zero).
         const auto delta_dist_x = (ray_dir_x == 0.0f) ? 1e30f : std::abs(1.0f / ray_dir_x);
         const auto delta_dist_y = (ray_dir_y == 0.0f) ? 1e30f : std::abs(1.0f / ray_dir_y);
 
-        // step_x/step_y ∈ {-1,+1}: which neighbor cell we enter next on each axis.
-        // side_dist_*: ray length until we cross the next vertical / horizontal grid line.
+        // step_* = which neighbor we enter; side_dist_* = ray distance to the *next* vertical/horizontal line from the camera.
         auto step_x = 0;
         auto step_y = 0;
         auto side_dist_x = 0.0f;
         auto side_dist_y = 0.0f;
 
+        // First crossing: how far *along the ray* to the next vertical line vs next horizontal line.
         if (ray_dir_x < 0.0f) {
             step_x = -1;
-            side_dist_x = (camera_x - static_cast<float>(map_x)) * delta_dist_x;
+            side_dist_x = (camera_x - static_cast<float>(map_x)) * delta_dist_x; // distance along ray to left cell edge
         } else {
             step_x = 1;
-            side_dist_x = (static_cast<float>(map_x + 1) - camera_x) * delta_dist_x;
+            side_dist_x = (static_cast<float>(map_x + 1) - camera_x) * delta_dist_x; // …to right edge (dir_x==0: delta blew up, doesn’t matter)
         }
-        if (ray_dir_y < 0.0f) {
+        if (ray_dir_y < 0.0f) { // y decreasing = “up” on the map in this project
             step_y = -1;
-            side_dist_y = (camera_y - static_cast<float>(map_y)) * delta_dist_y;
+            side_dist_y = (camera_y - static_cast<float>(map_y)) * delta_dist_y; // to top edge of current cell
         } else {
             step_y = 1;
-            side_dist_y = (static_cast<float>(map_y + 1) - camera_y) * delta_dist_y;
+            side_dist_y = (static_cast<float>(map_y + 1) - camera_y) * delta_dist_y; // …to bottom edge
         }
 
         auto hit = false;
-        auto side = 0; // 0 = we crossed a vertical grid line (NS wall); 1 = horizontal (EW wall).
-        constexpr auto kMaxSteps = 128;
+        // Which kind of wall we brushed first — 0 = vertical grid line (NS strip), 1 = horizontal (EW strip); used for shade.
+        auto side = 0;
+        constexpr auto kMaxSteps = 128; // sanity cap — stop if we’d march into infinity on huge maps
+        // Race the two “next crossing” distances; smaller one = which wall edge we hit first.
         for (auto steps = 0; steps < kMaxSteps; ++steps) {
             if (side_dist_x < side_dist_y) {
-                side_dist_x += delta_dist_x;
-                map_x += step_x;
+                side_dist_x += delta_dist_x; // jump to next vertical grid line
+                map_x += step_x; // we’re now standing in the neighbor cell on X
                 side = 0;
             } else {
+                // tied? this branch runs — fine; corner cases are rare
                 side_dist_y += delta_dist_y;
                 map_y += step_y;
                 side = 1;
@@ -145,10 +157,10 @@ auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) 
         }
 
         if (!hit) {
-            continue;
+            continue; // ray didn’t hit a wall in range — no wall strip this column
         }
 
-        // Projected / perpendicular distance — removes fisheye from pure ray length.
+        // Fish-eye fix: need depth *along view plane*, not “how long is the laser”. Messy fraction = hit that grid line.
         auto perp_wall_dist = 0.0f;
         if (side == 0) {
             perp_wall_dist =
@@ -158,31 +170,32 @@ auto DrawRaycastScene(const Level& level, const Player& player, Pixels& pixels) 
                 (static_cast<float>(map_y) - camera_y + (1.0f - static_cast<float>(step_y)) * 0.5f) / ray_dir_y;
         }
         if (perp_wall_dist <= 0.0f) {
-            continue;
+            continue; // behind camera / nonsense — skip column
         }
 
-        // Perspective: farther walls occupy fewer rows on screen.
+        // closer wall → taller strip on screen (1/dist-ish vibe).
         const auto line_height = static_cast<int>(static_cast<float>(screen_height) / perp_wall_dist);
-        const auto draw_start = std::max(0, (screen_height - line_height) / 2);
+        const auto draw_start = std::max(0, (screen_height - line_height) / 2); // clip if strip taller than screen
         const auto draw_end = std::min(screen_height - 1, (screen_height + line_height) / 2);
 
+        // quick fake lighting: NS vs EW reads different without real normals
         auto wall_color = RGB {.r = 190, .g = 190, .b = 190};
         if (side == 1) {
             wall_color = RGB {.r = 140, .g = 140, .b = 140};
         }
-        pixels.VLine(x, draw_start, draw_end, wall_color);
+        pixels.VLine(x, draw_start, draw_end, wall_color); // one vertical slice for this column — classic raycaster look
     }
 }
 } // namespace
 
 auto main() -> int {
     auto level = Level {};
-    auto player = Player { level };
+    auto player = Player { level }; // remembers level for bumping into walls + drawing dot on minimap
 
-    // Framebuffer resolution matches the logical map size (see Level::Width/Height).
+    // Bitmap we scribble into each frame; GL just textures a quad with this later.
     auto pixels = Pixels { level.Width(), level.Height(), "Raycaster OpenGL" };
 
-    // Called every frame *before* Draw; delta is seconds since last frame (variable timestep).
+    // WASD + arrows; dt scales turns/moves so 30fps vs 144fps feels the same.
     pixels.Update([&](const double delta) {
         const auto move_forward = pixels.IsKeyDown(GLFW_KEY_W) || pixels.IsKeyDown(GLFW_KEY_UP);
         const auto move_backward = pixels.IsKeyDown(GLFW_KEY_S) || pixels.IsKeyDown(GLFW_KEY_DOWN);
@@ -192,11 +205,12 @@ auto main() -> int {
         player.Update(delta, move_forward, move_backward, turn_left, turn_right);
     });
 
-    // Renders the entire software frame (world + HUD); Pixels::Run uploads it to GL afterward.
+    // Order matters: sky/floor → walls → HUD on top.
     pixels.Draw([&]() {
         DrawBackground(pixels);
         DrawRaycastScene(level, player, pixels);
 
+        // Small corner map; tile_size zooms it (bigger number = chunkier blocks).
         constexpr auto minimap_tile_size = 8u;
         constexpr auto minimap_offset_x = 16u;
         constexpr auto minimap_offset_y = 16u;
@@ -204,7 +218,7 @@ auto main() -> int {
         player.DrawMinimap(pixels, minimap_tile_size, minimap_offset_x, minimap_offset_y);
     });
 
-    pixels.Run();
+    pixels.Run(); // blocks until window closes — game loop + GL swap lives inside Window/Pixels
 
     return 0;
 }
